@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Spectre Dashboard // Web3</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://s3.tradingview.com/tv.js"></script>
+</head>
+<body>
+    <div id="login-modal" class="modal-overlay">
+        <div class="auth-card">
+            <div class="retro-ghost">ᗣ</div>
+            <h2>Spectre Access</h2>
+            <p>Enter PIN to unlock dashboard</p>
+            <input type="password" id="pin-input" placeholder="0000">
+            <button onclick="unlockDashboard()" class="phantom-btn">Unlock</button>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="brand">ᗣ Spectre</div>
+            <nav class="nav-group">
+                <button onclick="showTab('market')" class="nav-item active" id="btn-market">Market</button>
+                <button onclick="showTab('wallet')" class="nav-item" id="btn-wallet">My Wallet</button>
+                <button onclick="showTab('journal')" class="nav-item" id="btn-journal">Trade Journal</button>
+            </nav>
+            <button onclick="connectWallet()" id="mainConnectBtn" class="connect-pill">Connect Wallet</button>
+        </aside>
+
+        <main class="content">
+            <section id="market" class="tab-pane active">
+                <div class="search-bar">
+                    <input type="text" id="crypto-search" placeholder="Search any crypto (e.g. SOL, BTC, ETH)...">
+                    <button onclick="searchCrypto()" class="search-btn">Analyze</button>
+                </div>
+                <div id="chart-box" class="chart-wrapper">
+                    </div>
+            </section>
+
+            <section id="wallet" class="tab-pane">
+                <div class="wallet-display glass">
+                    <h3>Total Balance</h3>
+                    <h1 id="eth-balance">0.00 ETH</h1>
+                    <p id="wallet-status">Wallet Not Connected</p>
+                </div>
+            </section>
+
+            <section id="journal" class="tab-pane">
+                <div class="journal-box glass">
+                    <h2>Trade Log</h2>
+                    <div class="input-row">
+                        <input type="text" id="j-pair" placeholder="Pair">
+                        <input type="number" id="j-pnl" placeholder="PnL $">
+                        <button onclick="logTrade()" class="phantom-btn small">Save</button>
+                    </div>
+                    <div id="journal-list"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
