@@ -55,14 +55,24 @@
         </article>
 
         <article class="card glass">
-          <h2>Alpaca Attachment</h2>
-          <p>Attach brokerage API for equities and options order routing.</p>
-          <label for="alpacaKey">API Key</label>
-          <input id="alpacaKey" type="password" placeholder="PK..." />
-          <label for="alpacaSecret">API Secret</label>
-          <input id="alpacaSecret" type="password" placeholder="••••••••" />
-          <button id="alpacaConnect" class="btn accent">Attach Alpaca</button>
-          <p id="alpacaStatus" class="status-chip neutral">Not attached</p>
+          <h2>Alpaca Live Profit</h2>
+          <p>Reads account P/L from Python backend config (no API input fields in UI).</p>
+          <p id="alpacaStatus" class="status-chip neutral">Waiting for refresh</p>
+          <div class="metric-row">
+            <div>
+              <p>Portfolio Value</p>
+              <strong id="portfolioValue">--</strong>
+            </div>
+            <span id="equityDelta">--</span>
+          </div>
+          <div class="metric-row">
+            <div>
+              <p>Today P/L</p>
+              <strong id="todayPl">--</strong>
+            </div>
+            <span id="todayPlPct">--</span>
+          </div>
+          <button id="refreshAlpaca" class="btn">Refresh Profit</button>
         </article>
 
         <article class="card glass metrics">
@@ -117,6 +127,7 @@
           <h2>Execution Checklist</h2>
           <ul class="checklist">
             <li>✅ Dual wallet routing armed</li>
+            <li>✅ Alpaca live profit feed armed</li>
             <li>✅ Alpaca attachment checked</li>
             <li>⬜ Volatility filter below 22 VIX</li>
             <li>⬜ Confirm position sizing against VAR</li>
