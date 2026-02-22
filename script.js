@@ -50,6 +50,8 @@ const equityDelta = document.getElementById("equityDelta");
 const todayPl = document.getElementById("todayPl");
 const todayPlPct = document.getElementById("todayPlPct");
 
+const alpacaConnect = document.getElementById("alpacaConnect");
+const alpacaStatus = document.getElementById("alpacaStatus");
 const chatForm = document.getElementById("chatForm");
 const chatInput = document.getElementById("chatInput");
 const chatWindow = document.getElementById("chatWindow");
@@ -218,6 +220,123 @@ async function fetchAlpacaProfit() {
     alpacaStatus.className = "status-chip bad";
   }
 }
+
+function renderBotTemplates() {
+  botTemplateList.innerHTML = "";
+
+  SCRIPT_CONFIG.BOT_TEMPLATES.forEach((bot, index) => {
+    const card = document.createElement("section");
+    card.className = "bot-item";
+
+    const deployedClass = bot.deployed ? "deploy-btn deployed" : "deploy-btn";
+    const deployedText = bot.deployed ? "Deployed" : "Deploy";
+
+    card.innerHTML = `
+      <h3>Bot ${index + 1}</h3>
+      <label for="bot-name-${index}">Bot Name</label>
+      <input id="bot-name-${index}" data-field="name" data-index="${index}" type="text" value="${escapeHtml(bot.name)}" />
+      <label for="bot-url-${index}">Render URL</label>
+      <input id="bot-url-${index}" data-field="renderUrl" data-index="${index}" type="text" value="${escapeHtml(bot.renderUrl)}" />
+      <label for="bot-script-${index}">Python Script Template</label>
+      <textarea id="bot-script-${index}" data-field="script" data-index="${index}" rows="6">${escapeHtml(bot.script)}</textarea>
+      <button class="btn ${deployedClass}" data-index="${index}">${deployedText}</button>
+      <p class="hint">Render key source: SCRIPT_CONFIG.API_KEYS.RENDER</p>
+    `;
+
+    botTemplateList.appendChild(card);
+  });
+
+  botTemplateList.querySelectorAll("input[data-field], textarea[data-field]").forEach((field) => {
+    field.addEventListener("input", (event) => {
+      const idx = Number(event.target.dataset.index);
+      const prop = event.target.dataset.field;
+      SCRIPT_CONFIG.BOT_TEMPLATES[idx][prop] = event.target.value;
+    });
+  });
+
+  botTemplateList.querySelectorAll(".deploy-btn").forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      const idx = Number(event.target.dataset.index);
+      const bot = SCRIPT_CONFIG.BOT_TEMPLATES[idx];
+      bot.deployed = !bot.deployed;
+
+      if (bot.deployed) {
+        await fakeRenderDeploy(bot);
+      }
+
+      renderBotTemplates();
+    });
+  });
+}
+
+    });
+  });
+});
+
+alpacaConnect.addEventListener("click", () => {
+  if (!isUnlocked) return;
+
+  const key = document.getElementById("alpacaKey").value.trim();
+  const secret = document.getElementById("alpacaSecret").value.trim();
+
+  if (!key || !secret) {
+    alpacaStatus.textContent = "Missing credentials";
+    alpacaStatus.className = "status-chip neutral";
+    return;
+  }
+
+  alpacaStatus.textContent = "Attached and ready for paper/live routing";
+  alpacaStatus.className = "status-chip good";
+});
+
+chatForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!isUnlocked) return;
+
+  const prompt = chatInput.value.trim();
+  if (!prompt) return;
+
+  addMessage("user", `You: ${prompt}`);
+  chatInput.value = "";
+
+  const keyConfig = SCRIPT_CONFIG.API_KEYS.GROQ;
+  const key = extractApiValue(keyConfig);
+
+  if (!key || key === "placeholder") {
+    addMessage("bot", `AI: ${ruleBasedAnalysis(prompt)}`);
+    return;
+  }
+
+  addMessage("bot", "AI: Running Groq analysis...");
+
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        model: "llama-3.1-8b-instant",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a concise trading analyst. Provide entry, invalidation, and risk guidance in <= 5 bullets.",
+          },
+          { role: "user", content: prompt },
+        ],
+      }),
+    });
+
+    const data = await response.json();
+    const content = data?.choices?.[0]?.message?.content || "No analysis returned.";
+    replaceLastBotMessage(`AI: ${content}`);
+  } catch (error) {
+    replaceLastBotMessage("AI: Groq request failed. Falling back to local analysis.");
+    addMessage("bot", `AI: ${ruleBasedAnalysis(prompt)}`);
+  }
+});
 
 function renderBotTemplates() {
   botTemplateList.innerHTML = "";
