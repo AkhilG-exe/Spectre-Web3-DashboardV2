@@ -55,3 +55,26 @@ I am actively looking for collaborators to help expand the **Spectre Ecosystem**
 
 ---
 *Built with ❤️ for the Decentralized Community.*
+
+
+## ⚙️ Environment Setup
+
+Copy `.env.example` to `.env` and fill in your values:
+
+```bash
+cp .env.example .env
+```
+
+Required variables for this dashboard backend:
+- `DASHBOARD_PIN`
+- `ALPACA_API_KEY`
+- `ALPACA_API_SECRET`
+- `ALPACA_BASE_URL`
+- `GROQ_API_KEY`
+- `RENDER_API_KEY`
+
+Run with:
+
+```bash
+python3 app.py
+```

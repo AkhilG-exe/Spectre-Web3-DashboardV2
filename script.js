@@ -1,10 +1,5 @@
 const SCRIPT_CONFIG = {
-  ACCESS_PIN: "052809",
-  API_KEYS: {
-    ALPACA: "allpaca_key = \"placeholder\"",
-    GROQ: "groq_key = \"placeholder\"",
-    RENDER: "render_key = \"placeholder\"",
-  },
+  ACCESS_PIN: null,
   BOT_TEMPLATES: [
     {
       name: "Momentum Hunter",
@@ -66,6 +61,22 @@ document.addEventListener("DOMContentLoaded", () => {
   let alpacaPoll;
 
   renderBotTemplates();
+  initializePin();
+
+  async function initializePin() {
+    try {
+      const response = await fetch("/api/runtime-config");
+      const data = await response.json();
+      if (response.ok && data.ok && data.dashboard_pin) {
+        SCRIPT_CONFIG.ACCESS_PIN = String(data.dashboard_pin);
+      } else {
+        SCRIPT_CONFIG.ACCESS_PIN = "052809";
+      }
+    } catch (_error) {
+      SCRIPT_CONFIG.ACCESS_PIN = "052809";
+    }
+  }
+
 
   globalUnlockBtn.addEventListener("click", unlockDashboard);
   globalPinInput.addEventListener("keydown", (event) => {
@@ -82,7 +93,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function unlockDashboard() {
     const entered = globalPinInput.value.trim();
     const enteredDigits = normalizePin(entered);
-    const configDigits = normalizePin(SCRIPT_CONFIG.ACCESS_PIN);
+    const activePin = SCRIPT_CONFIG.ACCESS_PIN || "052809";
+    const configDigits = normalizePin(activePin);
 
     if (!entered) {
       globalPinStatus.textContent = "Enter PIN first";
@@ -90,7 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const matchesExact = entered === SCRIPT_CONFIG.ACCESS_PIN;
+    const matchesExact = entered === activePin;
     const matchesDigits = enteredDigits && enteredDigits === configDigits;
     const matchesNoLeadingZero = enteredDigits && configDigits && String(Number(enteredDigits)) === String(Number(configDigits));
 
@@ -111,14 +123,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function startAlpacaPolling() {
-    if (alpacaPoll) {
-      clearInterval(alpacaPoll);
-    }
-
+    if (alpacaPoll) clearInterval(alpacaPoll);
     alpacaPoll = setInterval(() => {
-      if (isUnlocked) {
-        fetchAlpacaProfit();
-      }
+      if (isUnlocked) fetchAlpacaProfit();
     }, 30000);
   }
 
@@ -131,27 +138,19 @@ document.addEventListener("DOMContentLoaded", () => {
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       if (!isUnlocked) return;
-
       tabs.forEach((btn) => btn.classList.remove("active"));
       panels.forEach((panel) => panel.classList.remove("active"));
-
       tab.classList.add("active");
-      const panel = document.getElementById(tab.dataset.tab);
-      panel?.classList.add("active");
-
-      if (tab.dataset.tab === "charts" && !chart) {
-        renderChart();
-      }
+      document.getElementById(tab.dataset.tab)?.classList.add("active");
+      if (tab.dataset.tab === "charts" && !chart) renderChart();
     });
   });
 
   walletButtons.forEach((button) => {
     button.addEventListener("click", () => {
       if (!isUnlocked || !walletStatus) return;
-
       const walletName = button.dataset.wallet;
       const short = `${Math.random().toString(16).slice(2, 6)}...${Math.random().toString(16).slice(2, 6)}`;
-
       Array.from(walletStatus.children).forEach((li) => {
         if (li.textContent.includes(walletName)) {
           li.innerHTML = `${walletName}: <span class="up">Connected (${short})</span>`;
@@ -174,72 +173,44 @@ document.addEventListener("DOMContentLoaded", () => {
 
     addMessage("user", `You: ${prompt}`);
     chatInput.value = "";
-
-    const keyConfig = SCRIPT_CONFIG.API_KEYS.GROQ;
-    const key = extractApiValue(keyConfig);
-
-    if (!key || key === "placeholder") {
-      addMessage("bot", `AI: ${ruleBasedAnalysis(prompt)}`);
-      return;
-    }
-
-    addMessage("bot", "AI: Running Groq analysis...");
+    addMessage("bot", "AI: Running analysis...");
 
     try {
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const response = await fetch("/api/groq/analyze", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${key}`,
-        },
-        body: JSON.stringify({
-          model: "llama-3.1-8b-instant",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are a concise trading analyst. Provide entry, invalidation, and risk guidance in <= 5 bullets.",
-            },
-            { role: "user", content: prompt },
-          ],
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
       });
-
       const data = await response.json();
-      const content = data?.choices?.[0]?.message?.content || "No analysis returned.";
-      replaceLastBotMessage(`AI: ${content}`);
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "Groq proxy failed");
+      }
+
+      replaceLastBotMessage(`AI: ${data.content}`);
     } catch (error) {
-      replaceLastBotMessage("AI: Groq request failed. Falling back to local analysis.");
+      replaceLastBotMessage("AI: Backend Groq not configured. Falling back to local analysis.");
       addMessage("bot", `AI: ${ruleBasedAnalysis(prompt)}`);
     }
   });
 
   async function fetchAlpacaProfit() {
-    if (!alpacaStatus || !portfolioValue || !equityDelta || !todayPl || !todayPlPct) {
-      return;
-    }
-
+    if (!alpacaStatus || !portfolioValue || !equityDelta || !todayPl || !todayPlPct) return;
     alpacaStatus.textContent = "Refreshing live P/L...";
     alpacaStatus.className = "status-chip neutral";
 
     try {
       const response = await fetch("/api/alpaca/profit");
       const data = await response.json();
-
-      if (!response.ok || !data.ok) {
-        throw new Error(data.error || "Alpaca fetch failed");
-      }
+      if (!response.ok || !data.ok) throw new Error(data.error || "Alpaca fetch failed");
 
       portfolioValue.textContent = formatCurrency(data.portfolio_value);
       equityDelta.textContent = formatSignedPercent(data.equity_change_pct);
       equityDelta.className = data.equity_change_pct >= 0 ? "up" : "down";
-
       todayPl.textContent = formatSignedCurrency(data.today_pl);
       todayPl.className = data.today_pl >= 0 ? "up" : "down";
-
       todayPlPct.textContent = formatSignedPercent(data.today_pl_pct);
       todayPlPct.className = data.today_pl_pct >= 0 ? "up" : "down";
-
       alpacaStatus.textContent = data.mode === "live" ? "Live Alpaca connected" : "Paper Alpaca connected";
       alpacaStatus.className = "status-chip good";
     } catch (error) {
@@ -250,13 +221,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderBotTemplates() {
     if (!botTemplateList) return;
-
     botTemplateList.innerHTML = "";
 
     SCRIPT_CONFIG.BOT_TEMPLATES.forEach((bot, index) => {
       const card = document.createElement("section");
       card.className = "bot-item";
-
       const deployedClass = bot.deployed ? "deploy-btn deployed" : "deploy-btn";
       const deployedText = bot.deployed ? "Deployed" : "Deploy";
 
@@ -269,7 +238,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <label for="bot-script-${index}">Python Script Template</label>
         <textarea id="bot-script-${index}" data-field="script" data-index="${index}" rows="6">${escapeHtml(bot.script)}</textarea>
         <button class="btn ${deployedClass}" data-index="${index}">${deployedText}</button>
-        <p class="hint">Render key source: SCRIPT_CONFIG.API_KEYS.RENDER</p>
+        <p class="hint">Render API key is read from backend .env</p>
       `;
 
       botTemplateList.appendChild(card);
@@ -287,32 +256,52 @@ document.addEventListener("DOMContentLoaded", () => {
       button.addEventListener("click", async (event) => {
         const idx = Number(event.target.dataset.index);
         const bot = SCRIPT_CONFIG.BOT_TEMPLATES[idx];
-        bot.deployed = !bot.deployed;
 
-        if (bot.deployed) {
-          await fakeRenderDeploy(bot);
+        if (!bot.deployed) {
+          const ok = await deployViaBackend(bot);
+          if (!ok) return;
         }
 
+        bot.deployed = !bot.deployed;
         renderBotTemplates();
+  initializePin();
+
+  async function initializePin() {
+    try {
+      const response = await fetch("/api/runtime-config");
+      const data = await response.json();
+      if (response.ok && data.ok && data.dashboard_pin) {
+        SCRIPT_CONFIG.ACCESS_PIN = String(data.dashboard_pin);
+      } else {
+        SCRIPT_CONFIG.ACCESS_PIN = "052809";
+      }
+    } catch (_error) {
+      SCRIPT_CONFIG.ACCESS_PIN = "052809";
+    }
+  }
+
       });
     });
   }
 
-  async function fakeRenderDeploy(bot) {
-    const apiKey = extractApiValue(SCRIPT_CONFIG.API_KEYS.RENDER);
-    console.log("Render deploy payload", {
-      apiKey,
-      botName: bot.name,
-      renderUrl: bot.renderUrl,
-      script: bot.script,
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, 500));
+  async function deployViaBackend(bot) {
+    try {
+      const response = await fetch("/api/render/deploy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ botName: bot.name, renderUrl: bot.renderUrl, script: bot.script }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.error || "Deploy failed");
+      return true;
+    } catch (error) {
+      alert(`Deploy blocked: ${error.message}`);
+      return false;
+    }
   }
 
   function addMessage(role, text) {
     if (!chatWindow) return;
-
     const p = document.createElement("p");
     p.className = role;
     p.textContent = text;
@@ -322,12 +311,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function replaceLastBotMessage(text) {
     if (!chatWindow) return;
-
     const bots = chatWindow.querySelectorAll(".bot");
     const last = bots[bots.length - 1];
-    if (last) {
-      last.textContent = text;
-    }
+    if (last) last.textContent = text;
   }
 
   function renderChart() {
@@ -360,11 +346,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-function extractApiValue(line) {
-  const match = line.match(/=\s*"([^"]+)"/);
-  return match ? match[1] : "";
-}
-
 function formatCurrency(v) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(v);
 }
@@ -380,15 +361,12 @@ function formatSignedPercent(v) {
 
 function ruleBasedAnalysis(prompt) {
   const lower = prompt.toLowerCase();
-
   if (lower.includes("btc") || lower.includes("bitcoin")) {
     return "BTC setup: wait for 15m close above resistance, size at 0.75R due to volatility, invalidate below prior swing low.";
   }
-
   if (lower.includes("spy") || lower.includes("qqq")) {
     return "Index setup: trade with trend only; enter on pullback to VWAP reclaim, stop below session low, target 1.8R.";
   }
-
   return "Build plan: identify trend + liquidity level, confirm momentum divergence, risk <=1% and move stop to break-even at 1R.";
 }
 
