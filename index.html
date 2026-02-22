@@ -1,64 +1,181 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Spectre Dashboard // Web3</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://s3.tradingview.com/tv.js"></script>
-</head>
-<body>
-    <div id="login-modal" class="modal-overlay">
-        <div class="auth-card">
-            <div class="retro-ghost">ᗣ</div>
-            <h2>Spectre Access</h2>
-            <p>Enter PIN to unlock dashboard</p>
-            <input type="password" id="pin-input" placeholder="0000">
-            <button onclick="unlockDashboard()" class="phantom-btn">Unlock</button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spectre Trader Command Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css?v=4" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+    <script src="script.js?v=4" defer></script>
+  </head>
+  <body class="theme-dark">
+    <div id="pinGate" class="pin-gate">
+      <div class="pin-card glass">
+        <p class="kicker">Secure Access Required</p>
+        <h1>Enter Dashboard PIN</h1>
+        <p>PIN is configured in <code>script.js</code>. Access is blocked until correct PIN is entered.</p>
+        <label for="globalPinInput">PIN</label>
+        <input id="globalPinInput" type="password" placeholder="Enter PIN" />
+        <button id="globalUnlockBtn" class="btn accent">Unlock Dashboard</button>
+        <p id="globalPinStatus" class="status-chip neutral">Locked</p>
+      </div>
+    </div>
+
+    <div class="aurora"></div>
+    <main id="dashboardApp" class="app-shell hidden-until-unlocked" aria-hidden="true">
+      <header class="top-bar glass">
+        <div>
+          <p class="kicker">Spectre Trading OS</p>
+          <h1>Trader Dashboard</h1>
         </div>
-    </div>
+        <div class="top-actions">
+          <button id="themeToggle" class="btn ghost">Switch Theme</button>
+          <button class="btn accent">Deploy Strategy</button>
+        </div>
+      </header>
 
-    <div class="app-container">
-        <aside class="sidebar">
-            <div class="brand">ᗣ Spectre</div>
-            <nav class="nav-group">
-                <button onclick="showTab('market')" class="nav-item active" id="btn-market">Market</button>
-                <button onclick="showTab('wallet')" class="nav-item" id="btn-wallet">My Wallet</button>
-                <button onclick="showTab('journal')" class="nav-item" id="btn-journal">Trade Journal</button>
-            </nav>
-            <button onclick="connectWallet()" id="mainConnectBtn" class="connect-pill">Connect Wallet</button>
-        </aside>
+      <section class="connection-grid">
+        <article class="card glass">
+          <h2>Wallet Attachments</h2>
+          <p>Connect two wallets for hedge + execution flows.</p>
+          <div class="wallet-actions">
+            <button class="btn" data-wallet="Primary Wallet">Connect Primary Wallet</button>
+            <button class="btn" data-wallet="Secondary Wallet">Connect Secondary Wallet</button>
+          </div>
+          <ul id="walletStatus" class="status-list">
+            <li>Primary Wallet: <span>Not connected</span></li>
+            <li>Secondary Wallet: <span>Not connected</span></li>
+          </ul>
+        </article>
 
-        <main class="content">
-            <section id="market" class="tab-pane active">
-                <div class="search-bar">
-                    <input type="text" id="crypto-search" placeholder="Search any crypto (e.g. SOL, BTC, ETH)...">
-                    <button onclick="searchCrypto()" class="search-btn">Analyze</button>
-                </div>
-                <div id="chart-box" class="chart-wrapper">
-                    </div>
-            </section>
+        <article class="card glass">
+          <h2>Alpaca Live Profit</h2>
+          <p>Reads account P/L from Python backend config (no API input fields in UI).</p>
+          <p id="alpacaStatus" class="status-chip neutral">Waiting for refresh</p>
+          <div class="metric-row">
+            <div>
+              <p>Portfolio Value</p>
+              <strong id="portfolioValue">--</strong>
+            </div>
+            <span id="equityDelta">--</span>
+          </div>
+          <div class="metric-row">
+            <div>
+              <p>Today P/L</p>
+              <strong id="todayPl">--</strong>
+            </div>
+            <span id="todayPlPct">--</span>
+          </div>
+          <button id="refreshAlpaca" class="btn">Refresh Profit</button>
+        </article>
 
-            <section id="wallet" class="tab-pane">
-                <div class="wallet-display glass">
-                    <h3>Total Balance</h3>
-                    <h1 id="eth-balance">0.00 ETH</h1>
-                    <p id="wallet-status">Wallet Not Connected</p>
-                </div>
-            </section>
+        <article class="card glass metrics">
+          <h2>Session Pulse</h2>
+          <div class="metric-row">
+            <div>
+              <p>Portfolio</p>
+              <strong>$421,380</strong>
+            </div>
+            <span class="up">+2.81%</span>
+          </div>
+          <div class="metric-row">
+            <div>
+              <p>Open Risk</p>
+              <strong>18.4%</strong>
+            </div>
+            <span class="down">-0.63%</span>
+          </div>
+          <div class="metric-row">
+            <div>
+              <p>Signals Fired</p>
+              <strong>12</strong>
+            </div>
+            <span>Today</span>
+          </div>
+        </article>
+      </section>
 
-            <section id="journal" class="tab-pane">
-                <div class="journal-box glass">
-                    <h2>Trade Log</h2>
-                    <div class="input-row">
-                        <input type="text" id="j-pair" placeholder="Pair">
-                        <input type="number" id="j-pnl" placeholder="PnL $">
-                        <button onclick="logTrade()" class="phantom-btn small">Save</button>
-                    </div>
-                    <div id="journal-list"></div>
-                </div>
-            </section>
-        </main>
-    </div>
-    <script src="script.js"></script>
-</body>
+      <nav class="tabs glass" role="tablist">
+        <button class="tab active" data-tab="overview">Overview</button>
+        <button class="tab" data-tab="yahoo">Yahoo Finance</button>
+        <button class="tab" data-tab="charts">Charts + Groq AI</button>
+        <button class="tab" data-tab="launch">Launch Panel</button>
+      </nav>
+
+      <section id="overview" class="tab-panel active panel-grid">
+        <article class="card glass">
+          <h2>Watchlist</h2>
+          <table>
+            <thead>
+              <tr><th>Symbol</th><th>Price</th><th>Move</th><th>Volume</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>SPY</td><td>$532.10</td><td class="up">+0.94%</td><td>68.2M</td></tr>
+              <tr><td>QQQ</td><td>$458.50</td><td class="up">+1.12%</td><td>51.7M</td></tr>
+              <tr><td>BTC-USD</td><td>$63,942</td><td class="down">-0.84%</td><td>32.8B</td></tr>
+              <tr><td>ETH-USD</td><td>$3,144</td><td class="up">+0.67%</td><td>13.5B</td></tr>
+            </tbody>
+          </table>
+        </article>
+        <article class="card glass">
+          <h2>Execution Checklist</h2>
+          <ul class="checklist">
+            <li>✅ Dual wallet routing armed</li>
+            <li>✅ Alpaca live profit feed armed</li>
+            <li>⬜ Volatility filter below 22 VIX</li>
+            <li>⬜ Confirm position sizing against VAR</li>
+          </ul>
+        </article>
+      </section>
+
+      <section id="yahoo" class="tab-panel">
+        <article class="card glass yahoo-layout">
+          <div>
+            <h2>Yahoo Finance Live Window</h2>
+            <p>
+              Quick view for macro and symbols. If your browser blocks embedding,
+              open Yahoo Finance in a new tab.
+            </p>
+            <a href="https://finance.yahoo.com/" target="_blank" rel="noreferrer" class="btn"
+              >Open Yahoo Finance</a
+            >
+          </div>
+          <iframe title="Yahoo Finance" src="https://finance.yahoo.com/" loading="lazy"></iframe>
+        </article>
+      </section>
+
+      <section id="charts" class="tab-panel panel-grid">
+        <article class="card glass chart-card">
+          <h2>Trading Chart</h2>
+          <canvas id="tradingChart"></canvas>
+          <p class="hint">Model feed: Intraday synthetic preview for strategy tuning.</p>
+        </article>
+        <article class="card glass chat-card">
+          <h2>Groq AI Trade Analyst</h2>
+          <p>Ask where/when to trade. Groq key is read from <code>SCRIPT_CONFIG.API_KEYS.GROQ</code>.</p>
+          <div id="chatWindow" class="chat-window">
+            <p class="bot">AI: Ready. Ask for entries, exits, or risk setup.</p>
+          </div>
+          <form id="chatForm" class="chat-form">
+            <input id="chatInput" type="text" placeholder="Analyze BTC breakout above 64k..." required />
+            <button class="btn accent" type="submit">Analyze</button>
+          </form>
+        </article>
+      </section>
+
+      <section id="launch" class="tab-panel panel-grid">
+        <article class="card glass launch-card full-width">
+          <h2>Render Python Bot Templates</h2>
+          <p>Uses script config values only. Edit bot name, Render URL and Python template below.</p>
+          <div id="botTemplateList" class="bot-template-list"></div>
+        </article>
+      </section>
+    </main>
+  </body>
 </html>
